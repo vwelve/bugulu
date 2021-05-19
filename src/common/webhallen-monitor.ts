@@ -1,19 +1,14 @@
 import puppeteer from "puppeteer";
 import { Page } from "puppeteer";
 import Enmap from "enmap";
-import axios from 'axios';
+import Product from "./product";
 
 class WebhallenMonitor {
     
-    static enmap = new Enmap<string, boolean>("monitor");
+    static enmap = new Enmap<string, boolean>("webhallen-monitor");
 
-    public static async add(url: string) {
-        if (/https:\/\/www\.webhallen\.com\/se\/product/.test(url) && (await axios.get(url).catch(e => false))) {
-            this.enmap.set(url, false);
-
-            return true;
-        }
-        return false;        
+    public static add(url: string) {
+        this.enmap.set(url, false);      
     }
 
     public static remove(url: string) {
@@ -24,11 +19,11 @@ class WebhallenMonitor {
         return this.enmap.keyArray();
     }
 
-    public static async monitor(): Promise<[string, boolean][]> {
+    public static async monitor(): Promise<Product[]> {
         const browser = await puppeteer.launch();
         const urls = this.enmap.keyArray();
         // string is url and boolean is whether it is available or not
-        const monitors: Promise<[string, boolean]>[] = [];
+        const monitors: Promise<Product>[] = [];
 
         for (const url of urls) {
             monitors.push(new Promise(async (resolve) => {
@@ -39,25 +34,31 @@ class WebhallenMonitor {
         }
 
         // remove products that availability didn't change
-        const products = (await Promise.all(monitors)).filter(([url, bool]) => bool != this.enmap.get(url));
+        const products = (await Promise.all(monitors)).filter(({url, availability}) => availability != this.enmap.get(url));
         await browser.close();
 
         // update availability
-        for (const [url, availability] of products) {
-            console.log(availability);
+        for (const { url, availability } of products) {
             this.enmap.set(url, availability);
-            console.log(!availability)
         }
-        console.log(products)
+        
         return products;
     }
 
-    public static async parse(page: Page, url: string): Promise<[string, boolean]> {
+    public static async parse(page: Page, url: string): Promise<Product> {
         await page.goto(url, { waitUntil: 'networkidle0' }).catch(err => console.log(err));
 
         const el = await page.$('.btn-preorder');
+        const productId = url.match(/se\/product\/(\d+)/)[1];
+        const title = url.match(/\/product\/\d+-(.+)/)[1].replace(/-/g, " ");
 
-        return [page.url(), !el] ;
+        return {
+            domain: "www.webhallen.com",
+            availability: !el,
+            url,
+            image: `https://cdn.webhallen.com/images/product/${productId}}`,
+            title
+        };
     }
 }
 

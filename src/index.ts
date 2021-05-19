@@ -10,6 +10,8 @@ dotenv.config();
 const client = new Client();
 
 client.on("ready", async () => {
+    console.log(`${client.user.username} is now online!`);
+
     setInterval(async () => {
         const [webhallen, inet] = await Promise.all([WebhallenMonitor.monitor(), InetMonitor.monitor()]);
         const products = [...webhallen, ...inet];

@@ -3,6 +3,7 @@ import { Client, MessageEmbed, TextChannel } from "discord.js";
 import * as dotenv from "dotenv";
 import Product from "./common/product";
 import InetMonitor from "./common/inet-monitor";
+import KomplettMonitor from "./common/komplett-monitor";
 
 dotenv.config();
 
@@ -35,6 +36,8 @@ function getDomain(url: string): string {
         return "webhallen";
     } else if (/https:\/\/www\.inet\.se\/produkt/.test(url)) {
         return "inet";
+    } else if (/https:\/\/www\.komplett\.se\/product\/\d+\//.test(url)) {
+        return "komplett"
     }
 }
 
@@ -58,6 +61,9 @@ client.on("message", async (msg) => {
             } else if (domain == "inet") {
                 InetMonitor.add(url);
                 await msg.channel.send(`Added ${url} to the monitor list.`);
+            } else {
+                KomplettMonitor.add(url);
+                await msg.channel.send(`Added ${url} to the monitor list.`);
             }
         break;
         case ".remove":
@@ -68,6 +74,9 @@ client.on("message", async (msg) => {
                 case "inet":
                     InetMonitor.remove(url);
                 break;
+                case "komplett":
+                    KomplettMonitor.remove(url);
+                break;
             }
             
             await msg.channel.send(`Removed ${url} from the monitor list.`);
@@ -75,7 +84,8 @@ client.on("message", async (msg) => {
         case ".list":
             const urls = [
                 ...WebhallenMonitor.all(),
-                ...InetMonitor.all()
+                ...InetMonitor.all(),
+                ...KomplettMonitor.all()
             ];
             await msg.channel.send(`Here is the monitoring list: ${urls.join(" ")}`);
         break;
